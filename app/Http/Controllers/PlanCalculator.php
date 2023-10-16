@@ -26,6 +26,165 @@ class PlanCalculator extends Controller
 
     const CHO_XEP_LOP = 80;
 
+    static public function CreateRetestPlan(Request $request)
+    {
+        try {
+            $choosen_area_id = null;
+            if ($request->has('is_arrange_by_area')) {
+                if ($request->is_arrange_by_area == 1) {
+                    if ($request->has('choosen_area_id') && $request->choosen_area_id != null) {
+                        $choosen_area_id = $request->choosen_area_id;
+                    }
+                }
+            }
+            $min_max_date = self::getMinMaxDate($request->plans);
+            $list_order = self::getOrders($min_max_date['min'], $min_max_date['max'], $choosen_area_id);
+            $list_eos_plan = [];
+            $list_oral_plan = [];
+            $list_practice_plan = [];
+            foreach ($request->plans as $raw_plan) {
+                switch (intval($raw_plan['retest_type_id'])) {
+                    case 1:
+                        $list_eos_plan[] = self::createEmptyPlan($raw_plan);
+                        break;
+                    case 2:
+                        $list_oral_plan[] = self::createEmptyPlan($raw_plan);
+                        break;
+                    case 3:
+                        $list_practice_plan[] = self::createEmptyPlan($raw_plan);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            $list_order_by_students = [];
+
+            foreach ($list_order as &$order) {
+                $list_order_by_students[$order->getStudentUserLogin()][] = &$order;
+            }
+
+            foreach ($list_order_by_students as &$list_order_by_a_student) {
+                foreach ($list_order_by_a_student as &$order) {
+                    switch ($order->getRetestTypeId()) {
+                        case 1:
+                            if (count($list_eos_plan) > 0) {
+                                self::optimizePlanByType($list_eos_plan, $order, $list_order_by_a_student);
+                            }
+                            break;
+                        case 2:
+                            if (count($list_oral_plan) > 0) {
+                                self::optimizePlanByType($list_oral_plan, $order, $list_order_by_a_student);
+                            }
+                            break;
+                        case 3:
+                            if (count($list_practice_plan) > 0) {
+                                self::optimizePlanByType($list_practice_plan, $order, $list_order_by_a_student);
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+            $list_unset_order = self::getUnsetOrders($list_order);
+            $response_plan_list = [];
+            foreach ($list_eos_plan as $plan) {
+                $orders = $plan->getPlanInfo();
+                self::lastCheckForDuplicate($orders, $list_unset_order);
+                $orders['order_list_count'] = count($orders['list_order']);
+                $response_plan_list[] = $orders;
+            }
+            foreach ($list_oral_plan as $plan) {
+                $orders = $plan->getPlanInfo();
+                self::lastCheckForDuplicate($orders, $list_unset_order);
+                $orders['order_list_count'] = count($orders['list_order']);
+                $response_plan_list[] = $orders;
+            }
+            foreach ($list_practice_plan as $plan) {
+                $orders = $plan->getPlanInfo();
+                self::lastCheckForDuplicate($orders, $list_unset_order);
+                $orders['order_list_count'] = count($orders['list_order']);
+                $response_plan_list[] = $orders;
+            }
+            // self::lastCheckForDuplicate($list_order, $list_unset_order);
+            $orders_statistic = self::statisticOrder($list_unset_order);
+            return response(
+                [
+                    'plans' => $response_plan_list,
+                    'unset_orders' => $list_unset_order,
+                    'orders_statistic' => $orders_statistic,
+                ],
+                200
+            );
+        } catch (\Throwable $th) {
+            Log::error("CreateRetestPlan: \n" . $th->getMessage() . "\n" . $th->getLine() . "\n End CreateRetestPlan");
+            return response(
+                [
+                    'plans' => [],
+                    'orders' => [],
+                    'unset_orders' => [],
+                    'orders_statistic' => [],
+                ],
+                200
+            );
+        }
+    }
+
+    /**
+     * lấy mốc thời gian bắt đầu tổ chức thi từ kế hoạch
+     *
+     * @param  mixed $raw_list
+     * @return mixed [min,max]
+     */
+    static private function getMinMaxDate($raw_list)
+    {
+        $list_date = [];
+        foreach ($raw_list as $object) {
+            $list_date[] = Carbon::createFromFormat('Y-m-d', $object['date'])->format('Y-m-d');
+        }
+        usort($list_date, function ($a, $b) {
+            $dateTimestamp1 = strtotime($a);
+            $dateTimestamp2 = strtotime($b);
+
+            return $dateTimestamp1 < $dateTimestamp2 ? -1 : 1;
+        });
+        return [
+            'min' => $list_date[0],
+            'max' => $list_date[count($list_date) - 1]
+        ];
+    }
+
+    /**
+     * khởi tạo danh sách đơn đăng ký theo class Order
+     *
+     * @param  string yyyy-mm-dd $from_date ngày bắt đầu tổ chức thi
+     * @param  string yyyy-mm-dd $to_date ngày kết thúc tổ chức thi
+     * @return array StdClass Order
+     */
+    private function getOrders($from_date = "2021-01-01", $to_date = "2021-01-02")
+    {
+        $data = (object)[
+            'status' => self::CHO_XEP_LOP // chờ xếp lớp
+        ];
+        $list_raw_order = $this->getListRetestStudent($data, true);
+        $list_student_user_login = [];
+        foreach ($list_raw_order as $order) {
+            if (!in_array($order->student_user_login, $list_student_user_login)) {
+                $list_student_user_login[] = $order->student_user_login;
+            }
+        }
+        $listStudentsWithCalendar = $this->listStudentsWithCalendar($from_date, $to_date, $list_student_user_login);
+        $list_order = [];
+        foreach ($list_raw_order as $order) {
+            $studentCalendar = $this->getStudentCalendar($order->student_user_login, $listStudentsWithCalendar);
+
+            $order_obj = new Order($order->id, $order->student_user_login, $order->retest_type_id, $order->subject_code, $studentCalendar, $order->student_user_code, $order->status_name, $order->student_note, $order->created_at, $order->skill_code);
+            $list_order[] = $order_obj;
+        }
+        return $list_order;
+    }
+
     /**
      * lấy dữ liệu lịch học list sinh viên theo khoảng ngày
      *
@@ -223,59 +382,6 @@ class PlanCalculator extends Controller
         return $list;
     }
 
-    /**
-     * khởi tạo danh sách đơn đăng ký theo class Order
-     *
-     * @param  string yyyy-mm-dd $from_date ngày bắt đầu tổ chức thi
-     * @param  string yyyy-mm-dd $to_date ngày kết thúc tổ chức thi
-     * @return array StdClass Order
-     */
-    static private function getOrders($from_date = "2021-01-01", $to_date = "2021-01-02", $choosen_area_id = null)
-    {
-        $data = (object)[
-            'status' => self::CHO_XEP_LOP, // chờ xếp lớp
-            'choosen_area_id' => $choosen_area_id,
-        ];
-        $list_raw_order = self::getListRetestStudent($data, true);
-        $list_student_user_login = [];
-        foreach ($list_raw_order as $order) {
-            if (!in_array($order->student_user_login, $list_student_user_login)) {
-                $list_student_user_login[] = $order->student_user_login;
-            }
-        }
-        $listStudentsWithCalendar = self::listStudentsWithCalendar($from_date, $to_date, $list_student_user_login);
-        $list_order = [];
-        foreach ($list_raw_order as $order) {
-            $studentCalendar = self::getStudentCalendar($order->student_user_login, $listStudentsWithCalendar);
-
-            $order_obj = new Order($order->id, $order->student_user_login, $order->retest_type_id, $order->subject_code, $studentCalendar, $order->student_user_code, $order->status_name, $order->student_note, $order->created_at, $order->skill_code);
-            $list_order[] = $order_obj;
-        }
-        return $list_order;
-    }
-    /**
-     * lấy mốc thời gian bắt đầu tổ chức thi từ kế hoạch
-     *
-     * @param  mixed $raw_list
-     * @return mixed [min,max]
-     */
-    static private function getMinMaxDate($raw_list)
-    {
-        $list_date = [];
-        foreach ($raw_list as $object) {
-            $list_date[] = Carbon::createFromFormat('Y-m-d', $object['date'])->format('Y-m-d');
-        }
-        usort($list_date, function ($a, $b) {
-            $dateTimestamp1 = strtotime($a);
-            $dateTimestamp2 = strtotime($b);
-
-            return $dateTimestamp1 < $dateTimestamp2 ? -1 : 1;
-        });
-        return [
-            'min' => $list_date[0],
-            'max' => $list_date[count($list_date) - 1]
-        ];
-    }
     /**
      * Sắp xếp lớp
      *
@@ -479,110 +585,7 @@ class PlanCalculator extends Controller
         ];
     }
 
-    static public function CreateRetestPlan(Request $request)
-    {
-        try {
-            $choosen_area_id = null;
-            if ($request->has('is_arrange_by_area')) {
-                if ($request->is_arrange_by_area == 1) {
-                    if ($request->has('choosen_area_id') && $request->choosen_area_id != null) {
-                        $choosen_area_id = $request->choosen_area_id;
-                    }
-                }
-            }
-            $min_max_date = self::getMinMaxDate($request->plans);
-            $list_order = self::getOrders($min_max_date['min'], $min_max_date['max'], $choosen_area_id);
-            $list_eos_plan = [];
-            $list_oral_plan = [];
-            $list_practice_plan = [];
-            foreach ($request->plans as $raw_plan) {
-                switch (intval($raw_plan['retest_type_id'])) {
-                    case 1:
-                        $list_eos_plan[] = self::createEmptyPlan($raw_plan);
-                        break;
-                    case 2:
-                        $list_oral_plan[] = self::createEmptyPlan($raw_plan);
-                        break;
-                    case 3:
-                        $list_practice_plan[] = self::createEmptyPlan($raw_plan);
-                        break;
-                    default:
-                        break;
-                }
-            }
 
-            $list_order_by_students = [];
-
-            foreach ($list_order as &$order) {
-                $list_order_by_students[$order->getStudentUserLogin()][] = &$order;
-            }
-
-            foreach ($list_order_by_students as &$list_order_by_a_student) {
-                foreach ($list_order_by_a_student as &$order) {
-                    switch ($order->getRetestTypeId()) {
-                        case 1:
-                            if (count($list_eos_plan) > 0) {
-                                self::optimizePlanByType($list_eos_plan, $order, $list_order_by_a_student);
-                            }
-                            break;
-                        case 2:
-                            if (count($list_oral_plan) > 0) {
-                                self::optimizePlanByType($list_oral_plan, $order, $list_order_by_a_student);
-                            }
-                            break;
-                        case 3:
-                            if (count($list_practice_plan) > 0) {
-                                self::optimizePlanByType($list_practice_plan, $order, $list_order_by_a_student);
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            }
-            $list_unset_order = self::getUnsetOrders($list_order);
-            $response_plan_list = [];
-            foreach ($list_eos_plan as $plan) {
-                $orders = $plan->getPlanInfo();
-                self::lastCheckForDuplicate($orders, $list_unset_order);
-                $orders['order_list_count'] = count($orders['list_order']);
-                $response_plan_list[] = $orders;
-            }
-            foreach ($list_oral_plan as $plan) {
-                $orders = $plan->getPlanInfo();
-                self::lastCheckForDuplicate($orders, $list_unset_order);
-                $orders['order_list_count'] = count($orders['list_order']);
-                $response_plan_list[] = $orders;
-            }
-            foreach ($list_practice_plan as $plan) {
-                $orders = $plan->getPlanInfo();
-                self::lastCheckForDuplicate($orders, $list_unset_order);
-                $orders['order_list_count'] = count($orders['list_order']);
-                $response_plan_list[] = $orders;
-            }
-            // self::lastCheckForDuplicate($list_order, $list_unset_order);
-            $orders_statistic = self::statisticOrder($list_unset_order);
-            return response(
-                [
-                    'plans' => $response_plan_list,
-                    'unset_orders' => $list_unset_order,
-                    'orders_statistic' => $orders_statistic,
-                ],
-                200
-            );
-        } catch (\Throwable $th) {
-            Log::error("CreateRetestPlan: \n" . $th->getMessage() . "\n" . $th->getLine() . "\n End CreateRetestPlan");
-            return response(
-                [
-                    'plans' => [],
-                    'orders' => [],
-                    'unset_orders' => [],
-                    'orders_statistic' => [],
-                ],
-                200
-            );
-        }
-    }
     
     private function lastCheckForDuplicate(&$orders, &$list_unset_order)
     {
