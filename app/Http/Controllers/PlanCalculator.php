@@ -25,8 +25,16 @@ class PlanCalculator extends Controller
     const KHONG_DI_THI = 0;
 
     const CHO_XEP_LOP = 80;
-
-    static public function CreateRetestPlan(Request $request)
+    /**
+     * Xếp lớp theo lịch được tạo
+     *
+     * @param  mixed $request
+     * @return mixed $response
+     */
+    public function index(){
+        return view('PlanCalculator');
+    }
+    static public function createRetestPlan(Request $request)
     {
         try {
             $choosen_area_id = null;
@@ -584,8 +592,6 @@ class PlanCalculator extends Controller
             3 => $practice_orders
         ];
     }
-
-
     
     private function lastCheckForDuplicate(&$orders, &$list_unset_order)
     {
