@@ -641,7 +641,7 @@
     },
     methods: {
       checkIfRoomBeScheduled(){
-        axios.get('/api/v1/getCheckDuplicateRoom',{
+        axios.get('/api/getCheckDuplicateRoom',{
           params: {
             room_id: this.plan.room.id,
             date: this.plan.date,
@@ -720,7 +720,7 @@
       },
       postCreateRetestPlan(data) {
         this.is_loading = true;
-        axios.post("/api/v1/postCreateRetestPlan", data).then((res) => {
+        axios.post("/api/postCreateRetestPlan", data).then((res) => {
           this.key_demo_plan++;
           this.dataUnsetOrders = res.unset_orders;
           this.dataDemoPlans = res.plans;
@@ -731,7 +731,7 @@
       },
       getTempPlanData() {
         this.is_loading = true;
-        axios.get("/api/v1/getTempPlanData").then((res) => {
+        axios.get("/api/getTempPlanData").then((res) => {
           if (res.data != 0) {
             let _temp = JSON.parse(res.data);
             if (
@@ -760,7 +760,7 @@
       },
       storeTempPlanData(data) {
         this.is_loading = true;
-        axios.post("/api/v1/storeTempPlanData", { data: data }).then((res) => {
+        axios.post("/api/storeTempPlanData", { data: data }).then((res) => {
           if (parseInt(res) == 0) {
             alert(
               "Chức năng tự động lưu dữ liệu gặp vấn đề.\nBạn có thể tiếp tục thực hiện tạo kế hoạch nhưng khi thoát trình duyệt sẽ bị mất kế hoạch!"
@@ -857,7 +857,7 @@
       },
       async searchUserLogin(key) {
         this.is_loading = true;
-        let result = await axios.get("/api/v1/searchUserLogin", {
+        let result = await axios.get("/api/searchUserLogin", {
           params: { key: key },
         });
         this.is_loading = false;
@@ -873,7 +873,8 @@
       },
       getPlanCreatorInformation() {
         this.is_loading = true;
-        axios.get("/api/v1/getPlanCreatorInformation").then((res) => {
+        axios.get("/api/getPlanCreatorInformation")
+        .then((res) => {
           this.available_service_id_list = this.getAvailableServiceId(
             res.available_service_id_list
           );
@@ -883,6 +884,9 @@
           this.subject_list = this.getSubjectList(res.subject_list);
           this.statisticAllOrders = res.orders_statistic;
           this.getTempPlanData();
+          this.is_loading = false;
+        })
+        .catch((err)=>{
           this.is_loading = false;
         });
       },

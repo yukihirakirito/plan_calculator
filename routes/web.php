@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\PlanCalculator;
+use App\Http\Controllers\PlanCalculatorController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,5 +17,5 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
-Route::get('/plan', [PlanCalculator::class, 'index']);
+Route::get('/plan', [PlanCalculatorController::class, 'index']);
 

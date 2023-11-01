@@ -1,17 +1,19 @@
 <?php
+namespace App\Http\Controllers;
 
-
-namespace App\Repositories\Admin\OnlineServiceV2;
-
-use App\Models\Fu\Area;
-use App\Models\Fu\Room;
+use App\Models\Area;
+use App\Models\AvailableService;
+use App\Models\Room;
 use App\Models\OnlineService;
+use App\Models\Slot;
 use App\Models\Subject;
+use App\Repositories\Admin\RetestHelperClasses\Order;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Request;
 use stdClass;
 
-class RetestRepository
+class RetestController extends PlanCalculatorController
 {
     const DAT = 1;
     const KHONG_DAT = 0;
@@ -100,7 +102,7 @@ class RetestRepository
 
             $area_list = Area::all();
             $room_list = Room::where('is_deleted', '=', 0)->get();
-            $online_subjects = Subject::getListSubjectOnline(true);;
+            $online_subjects = Subject::getListSubjectOnline(true);
             $list_order_object = $this->getOrders();
             $list_order = [];
             foreach ($list_order_object as $order) {
@@ -116,7 +118,7 @@ class RetestRepository
                 'orders_statistic' => $orders_statistic
             ]);
         } catch (\Throwable $th) {
-            Log::error(`----------------getPlanCreatorInformation-------------- \n $th->getLine() - $th->getMessage()`);
+            Log::error("----------------getPlanCreatorInformation-------------- \n " . $th->getLine() . " - " . $th->getMessage());
         }
     }
 

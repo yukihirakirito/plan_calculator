@@ -2,8 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PlanCalculator;
-
+use App\Http\Controllers\PlanCalculatorController;
+use App\Http\Controllers\RetestController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -18,5 +18,5 @@ use App\Http\Controllers\PlanCalculator;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-Route::post('/createRetestPlan', [PlanCalculator::class, 'createRetestPlan']);
-Route::get('/getPlanCreatorInformation', [PlanCalculator::class, 'getPlanCreatorInformation']);
+Route::post('/createRetestPlan', [PlanCalculatorController::class, 'createRetestPlan']);
+Route::get('/getPlanCreatorInformation', [RetestController::class, 'getPlanCreatorInformation']);

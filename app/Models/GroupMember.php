@@ -42,9 +42,4 @@ class GroupMember extends Model
         'time_ evaluate' => '1970-01-01',
     ];
 
-    public function __construct(array $attributes = [])
-    {
-        $this->connection = session('campus_db');
-        parent::__construct($attributes);
-    }
 }

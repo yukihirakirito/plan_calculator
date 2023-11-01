@@ -8,11 +8,6 @@ class Subject extends Model
 {
     protected $table = 'fu_subject';
     public $timestamps = false;
-    public function __construct(array $attributes = [])
-    {
-        $this->connection = session('campus_db');
-        parent::__construct($attributes);
-    }
 
     /**
      * @author Giapnt
@@ -31,7 +26,7 @@ class Subject extends Model
     {
         $res = [];
         $campus9Plus = ['th', 'ts', 'tc', 'td', 'tk', 'tt', 'tp', 'tg', 'tb'];
-        if (in_array(session('campus_db'), $campus9Plus)) {
+        if (in_array('ph', $campus9Plus)) {
             return $res;
         }
 
@@ -39,8 +34,7 @@ class Subject extends Model
             'COM107', 'MOB204', 'NET106', 'WEB204', 'WEB302', 'SOF204', 'SOF205', 'SOF306', 'SOF307', 'MUL219', 'MUL315', 'MUL319', 'DOM102', 'DOM108', 'MAR207', 'PRE105', 'PRE204', 'WEB206', 'MEC126'
         ];
 
-        $listSubjectOnline = self::on('ho')
-        ->select(['skill_code', 'subject_code'])
+        $listSubjectOnline = self::select(['skill_code', 'subject_code'])
         ->where('subject_type', 'Online')
         ->get();
 

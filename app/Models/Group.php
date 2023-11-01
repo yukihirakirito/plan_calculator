@@ -41,12 +41,6 @@ class Group extends Model
         'is_virtual' => 0, // lớp ảo dùng cho tổ chức thi lại
     ];
 
-    public function __construct(array $attributes = [])
-    {
-        $this->connection = session('campus_db');
-        parent::__construct($attributes); 
-    }
-
     public function groupMembers()
     {
         return $this->hasMany('App\Models\GroupMember', 'groupid', 'id');
