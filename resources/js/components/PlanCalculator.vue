@@ -66,20 +66,20 @@
   
             <table class="table table-hover table-striped table-sm table-info">
               <thead>
-                <tr class="table-warning font-weight-bold text-uppercase">
-                  <th scope="col" style="width: 2%">#</th>
-                  <th scope="col" style="width: 7%">Hình thức tổ chức</th>
-                  <th scope="col" style="width: 12%">Ngày</th>
-                  <th scope="col" style="width: 6%">Ca</th>
-                  <th scope="col" style="width: 6%">Thời gian</th>
-                  <th scope="col" style="width: 10%">Khu vực thi</th>
-                  <th scope="col" style="width: 10%">Phòng thi</th>
-                  <th scope="col" style="width: 8%">Loại thi</th>
-                  <th scope="col" style="width: 15%">Môn thi (Mã gốc)</th>
-                  <th scope="col" style="width: 4%">SL Min</th>
-                  <th scope="col" style="width: 4%">SL Max</th>
-                  <th scope="col" style="width: 7%">Giám thị 1</th>
-                  <th scope="col" style="width: 7%">Giám thị 2</th>
+                <tr class="table-warning font-weight-bold text-uppercase ">
+                  <th scope="col" style="width: 2%; font-size:13px">#</th>
+                  <th scope="col" style="width: 7%; font-size:13px">Hình thức</th>
+                  <th scope="col" style="width: 12%; font-size:13px">Ngày thi</th>
+                  <th scope="col" style="width: 6%; font-size:13px">Ca</th>
+                  <th scope="col" style="width: 6%; font-size:13px">Thời gian</th>
+                  <th scope="col" style="width: 10%; font-size:13px">Khu vực thi</th>
+                  <th scope="col" style="width: 10%; font-size:13px">Phòng thi</th>
+                  <th scope="col" style="width: 8%; font-size:13px">Loại thi</th>
+                  <th scope="col" style="width: 15%; font-size:13px">Môn thi (Mã gốc)</th>
+                  <th scope="col" style="width: 4%; font-size:13px">SL Min</th>
+                  <th scope="col" style="width: 4%; font-size:13px">SL Max</th>
+                  <th scope="col" style="width: 7%; font-size:13px">Giám thị 1</th>
+                  <th scope="col" style="width: 7%; font-size:13px">Giám thị 2</th>
                 </tr>
               </thead>
               <tbody>
@@ -390,44 +390,24 @@
           </form>
         </div>
       </div>
-  
-      <div
-        class="modal fade"
-        id="demoPlanModal"
-        tabindex="-1"
-        role="dialog"
-        aria-labelledby="demoPlanModalLabel"
-        aria-hidden="true"
-      >
-        <div class="modal-dialog modal-xl" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5>Kế hoạch thi</h5>
-              <button
-                type="button"
-                class="close"
-                data-dismiss="modal"
-                aria-label="Close"
-              >
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-            <div class="modal-body">
-              <demo-plan
-                :ref="key_demo_plan"
-                :available_service_id="submitData.available_service_id"
-                :plans="dataDemoPlans"
-                :unset_orders="dataUnsetOrders"
-                :statistic_unset_orders="statisticUnsetOrders"
-                :rooms="room_list"
-                :areas="area_list"
-                :is_arrange_by_area="is_arrange_by_area"
-                :choosen_area_id="submitData.choosen_area_id"
-              ></demo-plan>
-            </div>
-          </div>
+      <b-modal id="demoPlanModal" size="xl" 
+        title="Kế hoạch thi"  
+        v-model="modalShow"
+      > 
+        <div class="modal-body">
+          <demo-plan
+            :ref="key_demo_plan"
+            :available_service_id="submitData.available_service_id"
+            :plans="dataDemoPlans"
+            :unset_orders="dataUnsetOrders"
+            :statistic_unset_orders="statisticUnsetOrders"
+            :rooms="room_list"
+            :areas="area_list"
+            :is_arrange_by_area="is_arrange_by_area"
+            :choosen_area_id="submitData.choosen_area_id"
+          ></demo-plan>
         </div>
-      </div>
+      </b-modal>
     </div>
   </template>
   
@@ -471,6 +451,7 @@
     components: { Multiselect, demoPlan, Loading },
     data() {
       return {
+        modalShow:false,
         key_demo_plan: 0,
         is_loading: false,
         submitData: {
@@ -548,9 +529,6 @@
       }
     },
     watch: {
-      plan_room(){
-        this.checkIfRoomBeScheduled();
-      },
       choosen_area_id(new_value, old_value) {
         if (
           new_value != old_value &&
@@ -626,7 +604,7 @@
         this.supervisor1_list = [];
         if (new_value != "" && new_value != old_value && new_value != null) {
           this.searchUserLogin(new_value).then((res) => {
-            this.supervisor1_list = res;
+            this.supervisor1_list = res.data;
           });
         }
       },
@@ -634,25 +612,12 @@
         this.supervisor2_list = [];
         if (new_value != "" && new_value != old_value && new_value != null) {
           this.searchUserLogin(new_value).then((res) => {
-            this.supervisor2_list = res;
+            this.supervisor2_list = res.data;
           });
         }
       },
     },
     methods: {
-      checkIfRoomBeScheduled(){
-        axios.get('/api/getCheckDuplicateRoom',{
-          params: {
-            room_id: this.plan.room.id,
-            date: this.plan.date,
-            slot: this.plan.slot
-          }
-        }).then(res => {
-          if (res) {
-            alert(`Phòng ${this.plan.room.room_name} đã có lịch học/thi trong ngày ${this.plan.date} slot ${this.plan.slot} `);
-          }
-        })
-      },
       changeChoosenArea() {
         var choosen_area_id = this.submitData.choosen_area_id;
         this.filtered_room_list = this.room_list.filter(function (room) {
@@ -675,10 +640,6 @@
         }
       },
       onclickCreateRetestPlan() {
-        if(this.checkBackupTime()){
-          alert('Hệ thống sẽ tắt chức năng "Xếp lớp thi lại" từ 8:00:00-9:00:00 và 16:00:00-17:00:00 hằng ngày.  \nXin lỗi mọi người vì sự bất tiện này!');
-          return;
-        }
         let data = [];
         for (let index = 0; index < this.submitData.plan_data.length; index++) {
           data.push({
@@ -720,20 +681,27 @@
       },
       postCreateRetestPlan(data) {
         this.is_loading = true;
-        axios.post("/api/postCreateRetestPlan", data).then((res) => {
+        axios.post("/api/postCreateRetestPlan", data)
+        .then((res) => {
           this.key_demo_plan++;
-          this.dataUnsetOrders = res.unset_orders;
-          this.dataDemoPlans = res.plans;
-          this.statisticUnsetOrders = res.orders_statistic;
-          $("#demoPlanModal").modal("show");
+          this.dataUnsetOrders = res.data.unset_orders;
+          this.dataDemoPlans = res.data.plans;
+          this.statisticUnsetOrders = res.data.orders_statistic;
+          this.is_loading = false;
+        })
+        .then(()=>{
+          this.modalShow = true;
+        })
+        .catch((err)=>{
           this.is_loading = false;
         });
       },
       getTempPlanData() {
         this.is_loading = true;
         axios.get("/api/getTempPlanData").then((res) => {
+          console.log(res);
           if (res.data != 0) {
-            let _temp = JSON.parse(res.data);
+            let _temp = res.data;
             if (
               typeof _temp.available_service_id == "undefined" ||
               typeof _temp.plan_data == "undefined"
@@ -872,17 +840,15 @@
         this.value.push(tag);
       },
       getPlanCreatorInformation() {
-        this.is_loading = true;
+        // this.is_loading = true;
         axios.get("/api/getPlanCreatorInformation")
         .then((res) => {
-          this.available_service_id_list = this.getAvailableServiceId(
-            res.available_service_id_list
-          );
-          this.slot_list = this.getSlotList(res.slot_list);
-          this.area_list = res.area_list;
-          this.room_list = res.room_list;
-          this.subject_list = this.getSubjectList(res.subject_list);
-          this.statisticAllOrders = res.orders_statistic;
+          this.available_service_id_list = this.getAvailableServiceId(res.data.available_service_id_list);
+          this.slot_list = this.getSlotList(res.data.slot_list);
+          this.area_list = res.data.area_list;
+          this.room_list = res.data.room_list;
+          this.subject_list = this.getSubjectList(res.data.subject_list);
+          this.statisticAllOrders = res.data.orders_statistic;
           this.getTempPlanData();
           this.is_loading = false;
         })
@@ -975,6 +941,9 @@
   <style lang="css" scoped>
   table {
     overflow: auto;
+  }
+  table th{
+
   }
   .multiselect,
   .multiselect__select,

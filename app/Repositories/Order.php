@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Repositories\Admin\RetestHelperClasses;
+namespace App\Repositories;
 
 use App\Repositories\Plan;
 

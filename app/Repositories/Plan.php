@@ -2,7 +2,7 @@
 
 namespace App\Repositories;
 
-use App\Repositories\Admin\RetestHelperClasses\Order;
+use App\Repositories\Order;
 
 class Plan
 {

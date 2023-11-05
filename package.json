@@ -25,6 +25,7 @@
     },
     "dependencies": {
         "bootstrap-vue": "^2.23.1",
+        "moment": "^2.29.4",
         "vue-loading-overlay": "^3.4.3",
         "vue-multiselect": "^2.1.7"
     }

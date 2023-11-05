@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Activity;
 use App\Models\GroupMember;
 use App\Models\OnlineService;
-use App\Repositories\Admin\RetestHelperClasses\Order;
+use App\Repositories\Order;
 use App\Repositories\EOSPlan;
 use App\Repositories\OralPlan;
 use App\Repositories\PracticePlan;
@@ -34,6 +34,7 @@ class PlanCalculatorController extends Controller
     public function index(){
         return view('PlanCalculator');
     }
+
     static public function createRetestPlan(Request $request)
     {
         try {
@@ -175,17 +176,17 @@ class PlanCalculatorController extends Controller
         $data = (object)[
             'status' => self::CHO_XEP_LOP // chờ xếp lớp
         ];
-        $list_raw_order = $this->getListRetestStudent($data, true);
+        $list_raw_order = self::getListRetestStudent($data, true);
         $list_student_user_login = [];
         foreach ($list_raw_order as $order) {
             if (!in_array($order->student_user_login, $list_student_user_login)) {
                 $list_student_user_login[] = $order->student_user_login;
             }
         }
-        $listStudentsWithCalendar = $this->listStudentsWithCalendar($from_date, $to_date, $list_student_user_login);
+        $listStudentsWithCalendar = self::listStudentsWithCalendar($from_date, $to_date, $list_student_user_login);
         $list_order = [];
         foreach ($list_raw_order as $order) {
-            $studentCalendar = $this->getStudentCalendar($order->student_user_login, $listStudentsWithCalendar);
+            $studentCalendar = self::getStudentCalendar($order->student_user_login, $listStudentsWithCalendar);
 
             $order_obj = new Order($order->id, $order->student_user_login, $order->retest_type_id, $order->subject_code, $studentCalendar, $order->student_user_code, $order->status_name, $order->student_note, $order->created_at, $order->skill_code);
             $list_order[] = $order_obj;
@@ -201,7 +202,7 @@ class PlanCalculatorController extends Controller
      * @param  array $list_student_user_login
      * @return mixed
      */
-    public function listStudentsWithCalendar($date_from, $date_to, $list_student_user_login)
+    static private function listStudentsWithCalendar($date_from, $date_to, $list_student_user_login)
     {
         $from = Carbon::createFromFormat('Y-m-d', $date_from)->toDateString();
         $to = Carbon::createFromFormat('Y-m-d', $date_to)->toDateString();
@@ -228,7 +229,7 @@ class PlanCalculatorController extends Controller
      * @param bool $export false
      * @return mixed
      */
-    public function getListRetestStudent($data, $export = false)
+    static private function getListRetestStudent($data, $export = false)
     {
         try {
             $list_query = OnlineService::query();
@@ -238,73 +239,11 @@ class PlanCalculatorController extends Controller
                 ->leftjoin('fu_available_services', 'fu_available_services.id', '=', 'fu_online_services.available_service_id')
                 ->leftjoin('fu_service_status', 'fu_service_status.id', '=', 'fu_online_services.status')
                 ->leftjoin('relearn_onlines', 'relearn_onlines.online_service_id', '=', 'fu_online_services.id')
-                ->leftJoin('relearn_online_calendar_users', 'relearn_online_calendar_users.online_service_id', '=', 'fu_online_services.id');
-
-            if ($data->choosen_area_id != null) {
-                $list_query->where('fu_service_register.area_id','=', $data->choosen_area_id);
-            }
-            if (isset($data->retest_plan_id) && $data->retest_plan_id != null && $data->retest_plan_id != "" && $data->retest_plan_id != 'null') {
-                $list_query->join('fu_retest_plan', 'relearn_online_calendar.retest_plan_id', '=', 'fu_retest_plan.id');
-            } else {
-                $list_query->leftJoin('fu_retest_plan', 'relearn_online_calendar.retest_plan_id', '=', 'fu_retest_plan.id');
-            }
-            $list_query->where('fu_available_services.service_code', '=', 'dang-ky-thi-lai');
-            if (isset($data->student_code)) {
-                if ($data->student_code != "" && $data->student_code != null && $data->student_code != 'null') {
-                    $list_query->where(function ($query) use ($data) {
-                        $query->where('fu_online_services.student_user_login', '=', $data->student_code)
-                            ->orWhere('fu_service_register.user_code', '=', $data->student_code);
-                    });
-                }
-            }
-
-            if (isset($data->sync_point_status)) {
-                if ($data->sync_point_status != "" && $data->sync_point_status != null && $data->sync_point_status != 'null' && $data->sync_point_status != 0) {
-                    if ($data->sync_point_status == 1) {
-                        $list_query->where('relearn_online_calendar_users.sync_point', '=', 1);
-                    } else if ($data->sync_point_status == 2) {
-                        $list_query->where('relearn_online_calendar_users.sync_point', '=', 0);
-                    }
-                }
-            }
-
-            if (isset($data->term)) {
-                if ($data->term != "" && $data->term != null && $data->term != 'null') {
-                    $list_query->where('fu_available_services.term_id', '=', $data->term);
-                }
-            }
-
-            if (isset($data->retest_available_id)) {
-                if ($data->retest_available_id != "" && $data->retest_available_id != null && $data->retest_available_id != 'null') {
-                    $list_query->where('fu_online_services.available_service_id', '=', $data->retest_available_id);
-                }
-            }
-
-            if (isset($data->retest_type_id)) {
-                if ($data->retest_type_id != "" && $data->retest_type_id != null && $data->retest_type_id != 'null') {
-                    $list_query->where('fu_service_register.relearn_type_id', '=', $data->retest_type_id);
-                }
-            }
-
-            if (isset($data->subject_list)) {
-                if (count($data->subject_list) > 0) {
-                    $list_query->whereIn('fu_service_register.subject_code', $data->subject_list);
-                }
-            }
-
-            if (isset($data->status)) {
-                if ($data->status != "" && $data->status != null && $data->status != 'null') {
-                    $list_query->where('fu_online_services.status', $data->status);
-                }
-            }
-
-            if (isset($data->retest_plan_id)) {
-                if ($data->retest_plan_id != "" && $data->retest_plan_id != null && $data->retest_plan_id != 'null') {
-                    $list_query->where('relearn_online_calendar.retest_plan_id', '=', $data->retest_plan_id);
-                }
-            }
-
-
+                ->leftJoin('relearn_online_calendar_users', 'relearn_online_calendar_users.online_service_id', '=', 'fu_online_services.id')
+                ->leftJoin('fu_retest_plan', 'relearn_online_calendar.retest_plan_id', '=', 'fu_retest_plan.id')
+                ->leftJoin('fu_slot', 'fu_retest_plan.slot', '=', 'fu_slot.id')
+                ->leftJoin('fu_area', 'fu_retest_plan.area_id', '=', 'fu_area.id');
+            $list_query->where('fu_online_services.status', $data->status);
             $list_query->select([
                 'relearn_online_calendar.id as relearn_online_calendar_id',
                 'relearn_online_calendar.subject_id as subject_id',
@@ -313,11 +252,11 @@ class PlanCalculatorController extends Controller
                 'relearn_onlines.term_name_pass as term_name_pass',
                 'relearn_onlines.status as status',
                 'fu_user.user_code as student_user_code',
-                'fu_online_services.student_user_login as student_user_login',
                 DB::raw('CONCAT(fu_user.user_surname," ",fu_user.user_middlename," ",fu_user.user_givenname) as student_name'),
                 'fu_user.user_email as student_email',
                 'fu_user.user_login as student_user_login',
                 'fu_service_register.subject_code as subject_code',
+                'fu_service_register.subject_name as subject_name',
                 'fu_service_register.skill_code as skill_code',
                 'fu_service_register.relearn_type as retest_type_name',
                 'fu_service_register.relearn_type_id as retest_type_id',
@@ -332,37 +271,21 @@ class PlanCalculatorController extends Controller
                 'fu_service_status.id as status_id',
                 'fu_retest_plan.id as retest_plan_id',
                 'fu_retest_plan.name as retest_plan_name',
+                'fu_retest_plan.room as retest_plan_room',
+                'fu_retest_plan.slot as retest_plan_slot',
+                'fu_retest_plan.date as retest_plan_date',
+                'fu_area.area_name as area_name',
+                'fu_slot.slot_start as slot_start',
+                'fu_slot.slot_end as slot_end',
                 'fu_online_services.updated_at as last_update_time',
                 'fu_online_services.id as id',
                 'fu_online_services.created_at as created_at',
-                'relearn_online_calendar_users.sync_point as sync_point'
+                // 'relearn_online_calendar_users.sync_point as sync_point',
+                // 'relearn_online_calendar_users.is_skip_exam as is_skip_exam',
+                // 'relearn_online_calendar_users.note as relearn_online_calendar_user_note',
+                // 'registed_area.area_name as registed_area_name'
             ]);
-
-            $number_paginate = 8;
-            if (isset($data->number_paginate)) {
-                if ($data->number_paginate > 0) {
-                    $number_paginate = $data->number_paginate;
-                } else {
-                    $number_paginate = 8;
-                }
-            } else {
-                $number_paginate = 8;
-            }
-
-            if (isset($data->id)) {
-                if ($data->id != "" && $data->id != null && $data->id != 'null') {
-                    $list_query->where('fu_online_services.id', '=', $data->id);
-                    $number_paginate = 8;
-                    $data->page = 1;
-                }
-            }
-
-            $list_query->orderBy('fu_online_services.id', 'DESC');
-            if ($export == false) {
-                $list = $list_query->paginate($number_paginate);
-            } else {
-                $list = $list_query->get();
-            }
+            $list = $list_query->get();
             return $list;
         } catch (\Throwable $th) {
             Log::error("------------start err getListRetestStudent ----------");
@@ -551,47 +474,47 @@ class PlanCalculatorController extends Controller
         }
     }
 
-    // /**
-    //  * Tạo thống kê order đợi xếp lớp
-    //  *
-    //  * @param  mixed $list_order
-    //  * @return mixed
-    //  */
-    // static private function statisticOrder($list_order)
-    // {
-    //     $eos_orders = (object)[
-    //         'Total' => 0,
-    //     ];
-    //     $oral_orders = (object)[
-    //         'Total' => 0,
-    //     ];
-    //     $practice_orders = (object)[
-    //         'Total' => 0,
-    //     ];
-    //     foreach ($list_order as $order) {
-    //         switch ($order['retest_type_id']) {
-    //             case 1:
-    //                 $eos_orders->Total++;
-    //                 self::checkSubjectCodeOrder($eos_orders, $order['retest_subject']);
-    //                 break;
-    //             case 2:
-    //                 $oral_orders->Total++;
-    //                 self::checkSubjectCodeOrder($oral_orders, $order['retest_subject']);
-    //                 break;
-    //             case 3:
-    //                 $practice_orders->Total++;
-    //                 self::checkSubjectCodeOrder($practice_orders, $order['retest_subject']);
-    //                 break;
-    //             default:
-    //                 break;
-    //         }
-    //     }
-    //     return [
-    //         1 => $eos_orders,
-    //         2 => $oral_orders,
-    //         3 => $practice_orders
-    //     ];
-    // }
+    /**
+     * Tạo thống kê order đợi xếp lớp
+     *
+     * @param  mixed $list_order
+     * @return mixed
+     */
+    static private function statisticOrder($list_order)
+    {
+        $eos_orders = (object)[
+            'Total' => 0,
+        ];
+        $oral_orders = (object)[
+            'Total' => 0,
+        ];
+        $practice_orders = (object)[
+            'Total' => 0,
+        ];
+        foreach ($list_order as $order) {
+            switch ($order['retest_type_id']) {
+                case 1:
+                    $eos_orders->Total++;
+                    self::checkSubjectCodeOrder($eos_orders, $order['retest_subject']);
+                    break;
+                case 2:
+                    $oral_orders->Total++;
+                    self::checkSubjectCodeOrder($oral_orders, $order['retest_subject']);
+                    break;
+                case 3:
+                    $practice_orders->Total++;
+                    self::checkSubjectCodeOrder($practice_orders, $order['retest_subject']);
+                    break;
+                default:
+                    break;
+            }
+        }
+        return [
+            1 => $eos_orders,
+            2 => $oral_orders,
+            3 => $practice_orders
+        ];
+    }
     
     private function lastCheckForDuplicate(&$orders, &$list_unset_order)
     {

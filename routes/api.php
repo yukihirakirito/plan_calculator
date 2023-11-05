@@ -20,3 +20,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 Route::post('/createRetestPlan', [PlanCalculatorController::class, 'createRetestPlan']);
 Route::get('/getPlanCreatorInformation', [RetestController::class, 'getPlanCreatorInformation']);
+Route::get('/searchUserLogin', [RetestController::class, 'searchUserLogin']);
+Route::get('/getTempPlanData', [RetestController::class, 'getTempPlanData']);
+Route::post('/storeTempPlanData', [RetestController::class, 'storeTempPlanData']);
+Route::post('/postCreateRetestPlan', [RetestController::class, 'postCreateRetestPlan']);
