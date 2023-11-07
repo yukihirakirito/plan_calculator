@@ -382,12 +382,12 @@ export default {
       filtered_unset_orders: [],
     };
   },
+  created() {
+    this.check_plans = this.plans;
+  },
   watch: {
     filter_options_unset_orders_changed() {
       this.filterUnsetOrders();
-    },
-    plans(newVal, oldVal) {
-      this.check_plans = newVal;
     },
     unset_orders(newVal, oldVal) {
       this.check_unset_orders = newVal;

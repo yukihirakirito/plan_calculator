@@ -11,7 +11,7 @@
           <form enctype="multipart/form-data" class="" onsubmit="return false">
             <div class="form-group w-100">
               <div class="row">
-                <div class="col-sm-6">
+                <div class="col-sm-3">
                   <label for="slt-available-">Đợt thi</label>
                   <select
                     v-model="submitData.available_service_id"
