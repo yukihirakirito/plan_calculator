@@ -65,7 +65,7 @@
         >
           <th>#</th>
           <th>MSSV</th>
-          <th>-</th>
+          <th>Điểm đánh giá</th>
           <th>-</th>
           <th>Loại thi</th>
           <th>Thời gian thi</th>
@@ -83,7 +83,7 @@
         >
           <td>{{ i + 1 }}</td>
           <td>{{ order.student_user_code }}</td>
-          <td><hr /></td>
+          <td>{{ order.point }}</td>
           <td><hr /></td>
           <th>{{ showTestTypeName(order.retest_type_id) }}</th>
           <td><hr /></td>
@@ -205,7 +205,7 @@
       >
         <th>#</th>
         <th>MSSV</th>
-        <th><hr /></th>
+        <th>Điểm đánh giá</th>
         <th><hr /></th>
         <th>Loại thi</th>
         <th>Thời gian thi</th>
@@ -230,7 +230,7 @@
         <td>
           <b>{{ order.student_user_code }}</b>
         </td>
-        <td><hr /></td>
+        <td>{{ order.point }}</td>
         <td><hr /></td>
         <th>{{ showTestTypeName(order.retest_type_id) }}</th>
         <td><hr /></td>

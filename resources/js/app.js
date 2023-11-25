@@ -9,7 +9,6 @@ import 'bootstrap-vue/dist/bootstrap-vue.css';
 Vue.use(BootstrapVue);
 Vue.use(IconsPlugin);
 
-Vue.component('example-component', require('./components/ExampleComponent.vue').default);
 Vue.component('plan-calculator', require('./components/PlanCalculator.vue').default);
 
 const app = new Vue({

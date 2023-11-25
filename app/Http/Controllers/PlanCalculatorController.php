@@ -100,23 +100,19 @@ class PlanCalculatorController extends Controller
             $response_plan_list = [];
             foreach ($list_eos_plan as $plan) {
                 $orders = $plan->getPlanInfo();
-                self::lastCheckForDuplicate($orders, $list_unset_order);
                 $orders['order_list_count'] = count($orders['list_order']);
                 $response_plan_list[] = $orders;
             }
             foreach ($list_oral_plan as $plan) {
                 $orders = $plan->getPlanInfo();
-                self::lastCheckForDuplicate($orders, $list_unset_order);
                 $orders['order_list_count'] = count($orders['list_order']);
                 $response_plan_list[] = $orders;
             }
             foreach ($list_practice_plan as $plan) {
                 $orders = $plan->getPlanInfo();
-                self::lastCheckForDuplicate($orders, $list_unset_order);
                 $orders['order_list_count'] = count($orders['list_order']);
                 $response_plan_list[] = $orders;
             }
-            // self::lastCheckForDuplicate($list_order, $list_unset_order);
             $orders_statistic = self::statisticOrder($list_unset_order);
             return response(
                 [
@@ -187,7 +183,7 @@ class PlanCalculatorController extends Controller
         $list_order = [];
         foreach ($list_raw_order as $order) {
             $studentCalendar = self::getStudentCalendar($order->student_user_login, $listStudentsWithCalendar);
-
+            // Tạo đối tượng là đơn đăng ký học lại sv
             $order_obj = new Order($order->id, $order->student_user_login, $order->retest_type_id, $order->subject_code, $studentCalendar, $order->student_user_code, $order->status_name, $order->student_note, $order->created_at, $order->skill_code);
             $list_order[] = $order_obj;
         }
@@ -401,6 +397,7 @@ class PlanCalculatorController extends Controller
         $list_point_plan = array();
         foreach ($list_plan as $plan) {
             $point = self::getPointValuationPlan($order, $plan, $list_order_by_a_student);
+            $order->setPoint($point);
             $list_point_plan[] = $point;
         }
         $max_index = array_keys($list_point_plan, max($list_point_plan));
@@ -516,46 +513,4 @@ class PlanCalculatorController extends Controller
         ];
     }
     
-    private function lastCheckForDuplicate(&$orders, &$list_unset_order)
-    {
-        try {
-            $user_order_list = [];
-            foreach ($orders['list_order'] as $key => $data_order) {
-                if(isset($data_order['assigned_plan']) && $data_order['assigned_plan'] != null){
-                    $student_activity = GroupMember::where('fu_group_member.member_login', $data_order['student_user_login'])
-                    ->leftJoin('fu_activity', 'fu_activity.groupid', '=', 'fu_group_member.groupid')
-                    ->whereRaw('fu_activity.day >= CURRENT_DATE')
-                    ->where('fu_activity.day',  $data_order['assigned_plan']['date'])
-                    ->where('fu_activity.slot',  $data_order['assigned_plan']['slot'])
-                    ->select('fu_activity.id as activity_id')->get()->toArray();
-                    if (count($student_activity) > 0){
-                        array_push($list_unset_order, $data_order);
-                        $orders['list_order'][$key] = null;
-                    } else {
-                        if( isset($user_order_list[$data_order['student_user_login']]) 
-                        && count($user_order_list[$data_order['student_user_login']]) > 0 ){
-                            foreach ($user_order_list[$data_order['student_user_login']] as $key => $order_item){
-                                if($order_item['assigned_plan']['date'] == $data_order['assigned_plan']['date'] 
-                                && $order_item['assigned_plan']['slot'] == $data_order['assigned_plan']['slot']){
-                                    array_push($list_unset_order, $data_order);
-                                    $orders['list_order'][$key] = null;
-                                }else{
-                                    $user_order_list[$data_order['student_user_login']][] = $data_order;   
-                                };
-                            }
-                        }else{
-                            $user_order_list[$data_order['student_user_login']] = [];
-                            $user_order_list[$data_order['student_user_login']][] = $data_order;   
-                        }
-                    }
-                }
-            }
-            $orders['list_order'] = array_filter($orders['list_order'], function($order){
-                return $order !== null;
-            });
-        } catch (\Throwable $th) {
-            Log::error("lastCheckForDuplicate: \n" . $th->getMessage() . "\n" . $th->getLine() . "\n End CreateRetestPlan");
-        }
-
-    }
 }

@@ -942,9 +942,6 @@
   table {
     overflow: auto;
   }
-  table th{
-
-  }
   .multiselect,
   .multiselect__select,
   .multiselect__tags,
