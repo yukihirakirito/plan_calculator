@@ -14,7 +14,6 @@ class Order
     private $retest_type_id;
     private $retest_subject;
     private $busy_calendar;
-    private $isFinal = false;
     private $assigned_plan = null;
     private $skill_code = "";
     private $black_list_calendar = [];
@@ -34,16 +33,6 @@ class Order
         $this->busy_calendar = $busy;
         $this->student_note = $student_note;
         $this->created_at = $created_at;
-    }
-
-    public function setFinal()
-    {
-        $this->isFinal = true;
-    }
-
-    public function isFinal()
-{
-        return $this->isFinal;
     }
 
     public function setPoint($point)

@@ -217,11 +217,11 @@
         <th>Submit</th>
       </tr>
       <tr
-        v-show="isChosenExpand(-1)"
-        v-for="(order, index_unset_orders) in filtered_unset_orders"
+        v-if="isChosenExpand(-1) && order.point < -10"
+        v-for="(order, index_unset_orders) in unset_orders"
         :key="'order-' + index_unset_orders"
         :class="
-          order.duplicated_calendar.length > 0
+          order.point < -10
             ? 'table-danger'
             : 'table-warning'
         "
@@ -240,7 +240,7 @@
         <td>{{ order.student_note }}</td>
         <td>{{ order.status_name }}</td>
         <td>{{ formatDateTime(order.created_at) }}</td>
-        <td>
+        <!-- <td>
           <select
             v-model="order.change_plan_id"
             class="form-control form-control-sm"
@@ -266,6 +266,8 @@
             <br />
             {{ schedule.date + " Slot " + schedule.slot }}
           </div>
+        </td> -->
+        <td>
         </td>
         <td>
           <button

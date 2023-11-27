@@ -338,19 +338,36 @@ class PlanCalculatorController extends Controller
                 break;
         }
     }
+    
+    /**
+     * Lai tạo
+     *
+     * @param  mixed $cá thể ưu việt 1
+     * @param  mixed $cá thể ưu việt 2
+     * @return object $cá thể mới
+     */
+    static function circleHybridization($order1, $order2){
+        $data_order1 = $order1->getData();
+        $data_order2 = $order2->getData();
+
+        $newOrder = new Order($data_order1->id, $data_order1->student_login, $data_order1->type, $data_order1->subject, $data_order1->busy, $data_order1->student_user_code, $data_order1->status_name, $data_order1->student_note, $data_order1->created_at, $data_order1->skill_code);
+        $newOrder->setAssignPlan($data_order2->getAssignPlan());
+        return $newOrder;
+    }
 
     /**
-     * Đánh giá đơn đăng ký nếu nằm trong kế hoạch được tạo
+     * Hàm đánh giá mức độ thích nghi của cá thể
      *
      * @param  mixed $order object Order
      * @param  mixed $plan  object Plan
      * @return int điểm đánh giá
      */
-    static private function getPointValuationPlan(&$order, &$plan, &$list_order_by_a_student)
+    static private function setPointValuationPlan(&$order, &$plan, &$list_order_by_a_student)
     {
         try {
             $subject_code_point = 0;
-            $is_same_subject_code = $order->isSameSubject($plan->getSubjectCodes());
+            // Kiểm tra kế hoạch thi có môn sinh viên đăng ký thi hay không?
+            $is_same_subject_code = $order->isSameSubject($plan->getSubjectCodes()); 
             $is_busy = $order->isBusy($plan->getTimeData());
             if ($is_same_subject_code) {
                 $subject_code_point = 1;
@@ -366,13 +383,14 @@ class PlanCalculatorController extends Controller
             } else {
                 $subject_code_point = -10;
             }
+            // Điểm đánh giá về số lượng sinh viên trong kế hoạch thi
             $numberOrderPoint = $plan->getPointNumberOrder();
             
             $duplicated = 0;
             foreach ($list_order_by_a_student as &$order) {
                 if ($order->getAssignPlan() != null) {
                     if ($plan->getDate() == $order->getAssignPlan()['date'] && $plan->getSlot() == $order->getAssignPlan()['slot']) {
-                        $duplicated = 130; // hạ điểm đánh giá xuống -100 => đơn trùng do tool xếp lịch
+                        $duplicated = 100; // hạ điểm đánh giá xuống -100 => đơn trùng do tool xếp lịch
                         break;
                     }
                 }
@@ -396,7 +414,7 @@ class PlanCalculatorController extends Controller
     {
         $list_point_plan = array();
         foreach ($list_plan as $plan) {
-            $point = self::getPointValuationPlan($order, $plan, $list_order_by_a_student);
+            $point = self::setPointValuationPlan($order, $plan, $list_order_by_a_student);
             $order->setPoint($point);
             $list_point_plan[] = $point;
         }
@@ -407,8 +425,7 @@ class PlanCalculatorController extends Controller
             return -1;
         } else if($list_point_plan[$max_index[0]] < -90){ // đơn bị trùng lịch trong tool
             return -100 - $max_index[0];
-        }
-        else {
+        } else {
             return $max_index[0];
         }
     }
@@ -423,16 +440,30 @@ class PlanCalculatorController extends Controller
     static private function optimizePlanByType(&$plan_list, &$order, &$list_order_by_a_student)
     {
         $index  = self::findMostSuitablePlan($order, $plan_list, $list_order_by_a_student);
-        if ($index === -1) {
-        } else if($index <= -100)
-        {
-            // $order->setDuplicatedCalendar($plan_list[0 - ($index + 100)]->getTimeData());
-        }
-        else {
+        if ($index !== -1 && $index > -100) {
             $plan_list[$index]->setOrderIntoPlan($order);
         }
     }
 
+    /**
+     * Hàm dừng 
+     *
+     * @param  mixed $plan_list
+     * @param  mixed $order
+     * @return boolean
+     */
+    static private function checkSuitablePlan(&$plan_list)
+    {
+        foreach ($plan_list as $key => $plan) {
+            foreach ($plan->list_order as $order) {
+                $dataOrder = $order->getData();
+                if($dataOrder->point < -5){
+                    return 0;
+                }
+            }
+        }
+        return 1;
+    }
         
     /**
      * lấy dữ liệu đơn chưa được xếp lớp
@@ -448,7 +479,9 @@ class PlanCalculatorController extends Controller
                 if (!count(array_filter($list_unset_order, function ($item) use ($order) {
                     return $item['id'] == $order->getData()['id'];
                 }))) {
-                    $list_unset_order[] = $order->getData();
+                    if($order->getData()['point'] < -10){
+                        $list_unset_order[] = $order->getData();
+                    }
                 }
             }
         }
@@ -493,14 +526,17 @@ class PlanCalculatorController extends Controller
                 case 1:
                     $eos_orders->Total++;
                     self::checkSubjectCodeOrder($eos_orders, $order['retest_subject']);
+                    self::checkSuitablePlan($eos_orders);
                     break;
                 case 2:
                     $oral_orders->Total++;
                     self::checkSubjectCodeOrder($oral_orders, $order['retest_subject']);
+                    self::checkSuitablePlan($oral_orders);
                     break;
                 case 3:
                     $practice_orders->Total++;
                     self::checkSubjectCodeOrder($practice_orders, $order['retest_subject']);
+                    self::checkSuitablePlan($practice_orders);
                     break;
                 default:
                     break;
